@@ -3,10 +3,10 @@ class SupercoolCommand < Cri::CommandRunner
 
   def self.command
     Cri::Command.define do
-      name        'foo'
-      usage       'foo [options]'
-      summary     '3scale foo'
-      description '3scale foo command'
+      name        'supercool'
+      usage       'supercool [options]'
+      summary     '3scale supercool'
+      description '3scale supercool command'
       runner SupercoolCommand
     end
   end
