@@ -1,7 +1,7 @@
+---
 version: 2.1
 orbs:
-  ruby: circleci/ruby@0.1.2 
-
+  ruby: circleci/ruby@0.1.2
 jobs:
   build:
     docker:
@@ -13,3 +13,28 @@ jobs:
           name: Which bundler?
           command: bundle -v
       - ruby/bundle-install
+  deploy:
+    docker:
+      - image: circleci/ruby:2.4.1-node-browsers
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+        name: Setup Rubygems
+        command: bash .circleci/setup-rubygems.sh
+      - run:
+        name: Publish to Rubygems
+        command: |
+          gem build 3scale_toolbox_supercool_plugin.gemspec
+          gem push "3scale_toolbox_supercool_plugin-$(git describe --tags).gem"
+workflows:
+  version: 2
+  test-deploy:
+    jobs:
+      - build
+      - deploy:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
