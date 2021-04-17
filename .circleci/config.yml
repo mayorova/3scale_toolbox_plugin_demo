@@ -25,7 +25,7 @@ jobs:
       - run:
           name: Publish to Rubygems
           command: |
-            gem build 3scale_toolbox_supercool_plugin.gemspec
+            gem build 3scale_toolbox_supercool_plugin.gemspec -o "3scale_toolbox_supercool_plugin-$(git describe --tags).gem"
             gem push "3scale_toolbox_supercool_plugin-$(git describe --tags).gem"
 workflows:
   version: 2
