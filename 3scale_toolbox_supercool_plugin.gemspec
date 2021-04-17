@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = '3scale_toolbox_supercool_plugin'
-  spec.version       = '1.1.0'
+  spec.version       = '1.2.0'
   spec.licenses      = ['MIT']
   spec.authors       = ['Eguzki Astiz Lezaun']
   spec.email         = ['eastizle@redhat.com']
