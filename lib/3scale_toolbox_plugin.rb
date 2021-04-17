@@ -12,7 +12,7 @@ class SupercoolCommand < Cri::CommandRunner
   end
 
   def run
-    puts 'Doing lots of things very well!'
+    puts 'Doing lots of super things very well!'
   end
 end
 ThreeScaleToolbox::CLI.add_command(SupercoolCommand)
