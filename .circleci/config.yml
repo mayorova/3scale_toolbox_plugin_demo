@@ -20,13 +20,13 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Setup Rubygems
-        command: bash .circleci/setup-rubygems.sh
+          name: Setup Rubygems
+          command: bash .circleci/setup-rubygems.sh
       - run:
-        name: Publish to Rubygems
-        command: |
-          gem build 3scale_toolbox_supercool_plugin.gemspec
-          gem push "3scale_toolbox_supercool_plugin-$(git describe --tags).gem"
+          name: Publish to Rubygems
+          command: |
+            gem build 3scale_toolbox_supercool_plugin.gemspec
+            gem push "3scale_toolbox_supercool_plugin-$(git describe --tags).gem"
 workflows:
   version: 2
   test-deploy:
