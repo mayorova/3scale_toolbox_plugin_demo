@@ -61,6 +61,8 @@ class CopyTenantTask
       delete_mapping_rules: true
     }
 
+    pp product_copy_context
+
     products.each do |product|
       system_name = product['system_name']
 

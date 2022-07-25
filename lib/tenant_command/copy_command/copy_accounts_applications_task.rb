@@ -14,6 +14,10 @@ class CopyAccountsApplicationsTask
     delete_default_account
     copy_accounts
 
+    puts 'Copying accounts and applications completed!'
+    pp objects_mapping
+    puts objects_mapping.to_json
+
   end
 
   private
