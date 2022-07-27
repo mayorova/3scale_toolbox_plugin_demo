@@ -3,7 +3,6 @@ class CopyAccountsApplicationsTask
 
   def initialize(context)
     @context = context
-    @account_ids = Hash.new
   end
 
   def call
@@ -22,6 +21,8 @@ class CopyAccountsApplicationsTask
 
   private
 
+  # When a tenant is created, a default provider account is created along with it
+  # this method deletes this default account, in order to fill it with actual accounts from source
   def delete_default_account
     accounts = target_tenant_client.list_accounts
     accounts.each do |acc|
@@ -112,14 +113,28 @@ class CopyAccountsApplicationsTask
         name: app['name'],
         description: app['description'],
         user_key: app['user_key'],
-        application_id: app['application_id'],
-        application_key: app['application_key']
+        application_id: app['application_id']
       }
       target_plan_id = plans[app['plan_id']]
-      new_app = target_tenant_client.create_application target_account_id, attrs, plan_id: target_plan_id
-      logger.info "Created application, source id #{app['id']}, target id #{new_app['id']}"
 
-      add_application_to_mapping(app['service_id'], app['id'], new_app['id'])
+      if target_plan_id
+        new_app = target_tenant_client.create_application target_account_id, attrs, plan_id: target_plan_id
+        logger.info "Created application, source id #{app['id']}, target id #{new_app['id']}"
+
+        # Application keys should be updated separately, they are not part of application model
+        keys = target_tenant_client.list_application_keys target_account_id, new_app['id']
+        keys.each do |key|
+          target_tenant_client.http_client.delete("/admin/api/accounts/#{target_account_id}/applications/#{new_app['id']}/keys/#{key['value']}")
+          logger.info "Automatically generated key deleted from target application #{new_app['id']}"
+        end
+
+        app_keys = source_tenant_client.list_application_keys source_account_id, app['id']
+        app_keys.each do |key|
+          target_tenant_client.create_application_key target_account_id, new_app['id'], key['value']
+        end
+
+        add_application_to_mapping(app['service_id'], app['id'], new_app['id'])
+      end
     end
 
   end
@@ -152,24 +167,30 @@ class CopyAccountsApplicationsTask
 
     source_services_list.each do |service|
       source_service_id = service['id']
-      target_service_id = target_services_list.find{ |s| compare_by_system_name s, service }['id']
+      target_service = target_services_list.find{ |s| compare_by_system_name s, service }
+      
+      if target_service
+        target_service_id = target_service['id']
 
-      logger.info "Matching plans ID: #{source_service_id}, target service ID: #{target_service_id}, system name: #{service['system_name']}"
+        logger.info "Matching plans ID: #{source_service_id}, target service ID: #{target_service_id}, system name: #{service['system_name']}"
 
-      source_plans = source_tenant_client.list_service_application_plans source_service_id
-      target_plans = target_tenant_client.list_service_application_plans target_service_id
+        source_plans = source_tenant_client.list_service_application_plans source_service_id
+        target_plans = target_tenant_client.list_service_application_plans target_service_id
 
-      plans_mapping = {}
-      source_plans.each do |plan|
-        target_plan = target_plans.find{ |p| compare_by_system_name p, plan }
-        plans_mapping[plan['id']] = target_plan['id']
-        logger.info "App plan with system name #{plan['system_name']} and id #{plan['id']} matches target plan id #{target_plan['id']}"
+        plans_mapping = {}
+        source_plans.each do |plan|
+          target_plan = target_plans.find{ |p| compare_by_system_name p, plan }
+          if target_plan
+            plans_mapping[plan['id']] = target_plan['id']
+            logger.info "App plan with system name #{plan['system_name']} and id #{plan['id']} matches target plan id #{target_plan['id']}"
+          end
+        end
+
+        objects_mapping[:services][source_service_id] = {
+          target_service_id: target_service_id,
+          plans: plans_mapping
+        }
       end
-
-      objects_mapping[:services][source_service_id] = {
-        target_service_id: target_service_id,
-        plans: plans_mapping
-      }
 
     end
 
