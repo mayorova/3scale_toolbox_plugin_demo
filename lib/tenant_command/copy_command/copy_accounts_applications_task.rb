@@ -40,10 +40,8 @@ class CopyAccountsApplicationsTask
 
       new_account = create_account acc, first_user
 
-      copy_users users_list, first_user, new_account['id']
+      copy_users acc, users_list, first_user, new_account['id']
       copy_account_applications acc['id'], new_account['id']
-
-      objects_mapping[:accounts][acc['id']] = new_account['id']
     end
   end
 
@@ -55,18 +53,26 @@ class CopyAccountsApplicationsTask
       }
       new_account = target_tenant_client.signup(attrs, name: account['org_name'], username: user['username'])
       logger.info "Created account! source id: #{account['id']}, target id: #{new_account['id']}"
+
+      add_account_to_mapping account['id'], new_account['id']
+
       logger.info "Created user! source id: #{user['id']}, username #{user['username']} password: #{temp_password}"
       new_account
   end
 
-  def copy_users(users_list, first_user, new_account_id)
+  def copy_users(source_account, users_list, first_user, new_account_id)
     logger.info("Updating first account user...")
     new_first_user = target_tenant_client.list_users(new_account_id).first
     update_user new_account_id, first_user, new_first_user
+    add_user_to_mapping source_account['id'], first_user['id'], new_first_user['id']
+
     logger.info("Updated first account user with ID #{new_first_user['id']}...")
 
     users_list.each do |user|
       new_user = create_user new_account_id, user
+
+      add_user_to_mapping source_account['id'], user['id'], new_user['id']
+
       update_user new_account_id, user, new_user
     end
   end
@@ -233,6 +239,22 @@ class CopyAccountsApplicationsTask
     @objects_mapping ||= { services: {}, accounts: {} }
   end
 
+  def add_account_to_mapping(source_account_id, target_account_id)
+    objects_mapping[:accounts][source_account_id] = {
+      target_account_id: target_account_id,
+      users: {}
+    }
+  end
+
+  def add_user_to_mapping(source_account_id, source_user_id, target_user_id)
+    objects_mapping[:accounts][source_account_id][:users][source_user_id] = target_user_id
+  end
+
+  def add_application_to_mapping(source_service_id, source_app_id, target_app_id)
+    objects_mapping[:services][source_service_id][:applications] ||= {}
+    objects_mapping[:services][source_service_id][:applications][source_app_id] = target_app_id
+  end
+
   def flat_plans_mapping
     objects_mapping[:services].values.map{|v| v[:plans]}.reduce(:merge)
   end
@@ -246,10 +268,5 @@ class CopyAccountsApplicationsTask
 
   def temp_password
     context[:temp_password]
-  end
-
-  def add_application_to_mapping(source_service_id, source_app_id, target_app_id)
-    objects_mapping[:services][source_service_id][:applications] ||= {}
-    objects_mapping[:services][source_service_id][:applications][source_app_id] = target_app_id
   end
 end
